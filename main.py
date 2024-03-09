@@ -2,7 +2,7 @@ import cv2 as cv
 import numpy as np
 import glob
 
-chessboardsize = (7, 11)
+chessboardsize = (6, 9)
 framesize = (1280, 720)
 
 # termination criteria
@@ -20,7 +20,7 @@ objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane.
 
 # Get the path of the images
-images = glob.glob('calibration_images/*.jpg')
+images = glob.glob('calibration_images/webcam-genius/*.jpg')
 
 for image in images:
     print(image)
@@ -52,10 +52,6 @@ ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints,
 
 
 ############## UNDISTORTION #####################################################
-
-img_ = cv.imread('calibration_images/test_image.jpg')
-
-
 def undistort_img(img):
     h,  w = img.shape[:2]
     newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
@@ -69,7 +65,8 @@ def undistort_img(img):
     dst = dst[y:y+h, x:x+w]
     return dst
 
-cv.imwrite('caliResult2.png', undistort_img(img_))
+img_ = cv.imread('calibration_images/test_image.jpg')
+cv.imwrite('undistorted1.png', undistort_img(img_))
 
 
 # Reprojection Error
