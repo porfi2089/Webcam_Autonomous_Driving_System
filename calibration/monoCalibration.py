@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import glob
+import codecs, json
 
 chessboardsize = (6, 9)
 framesize = (1280, 720)
@@ -42,7 +43,7 @@ for image in images:
         # Draw and display the corners
         img = cv.drawChessboardCorners(img, chessboardsize, corners2, ret)
         cv.imshow('img', img)
-        cv.waitKey(5000)  # Add this line
+        cv.waitKey(1)  # Add this line
 
 cv.destroyAllWindows()
 
@@ -51,14 +52,23 @@ cv.destroyAllWindows()
 ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, framesize, None, None)
 
 
+calib = '{"cameraMatrix": [], "dist": []}'
+calibData = json.loads(calib)
+calibData["cameraMatrix"] = cameraMatrix.tolist()
+calibData["dist"] = dist.tolist()
+
+with open("camCalibrationData.json", "w") as cal:
+    json.dump(calibData, cal)
+
+
 ############## UNDISTORTION #####################################################
-def undistort_img(img):
-    h,  w = img.shape[:2]
-    newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(cameraMatrix, dist, (w,h), 1, (w,h))
+def undistort_img(_img, _cameraMatrix, _dist):
+    h,  w = _img.shape[:2]
+    newCameraMatrix, roi = cv.getOptimalNewCameraMatrix(_cameraMatrix, _dist, (w,h), 1, (w,h))
 
     # Undistort with Remapping
-    mapx, mapy = cv.initUndistortRectifyMap(cameraMatrix, dist, None, newCameraMatrix, (w,h), 5)
-    dst = cv.remap(img, mapx, mapy, cv.INTER_LINEAR)
+    mapx, mapy = cv.initUndistortRectifyMap(_cameraMatrix, _dist, None, newCameraMatrix, (w,h), 5)
+    dst = cv.remap(_img, mapx, mapy, cv.INTER_LINEAR)
 
     # crop the image
     x, y, w, h = roi
@@ -66,7 +76,7 @@ def undistort_img(img):
     return dst
 
 img_ = cv.imread('calibration_images/test_image.jpg')
-cv.imwrite('undistorted1.png', undistort_img(img_))
+cv.imwrite('undistorted1.png', undistort_img(img_, cameraMatrix, dist))
 
 
 # Reprojection Error
