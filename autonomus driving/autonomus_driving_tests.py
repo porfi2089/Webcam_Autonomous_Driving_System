@@ -34,90 +34,172 @@ load_cam_calib_data('../calibration/camCalibrationData.json')
 
 start = time.time()
 
-img = cv.imread('images/test11.jpg')
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-img = undistort_img(img, cameraMatrix, dist)
-img = cv.resize(img, (640, 360))
-b = img.copy()
-b[:, :, 1] = 0
-b[:, :, 2] = 0
-img = b
-gray = cv.cvtColor(img, cv.COLOR_RGB2GRAY)
-#gray = cv.GaussianBlur(gray, (9, 9), 10)
+img = cv.imread('images/cam 2/WIN_20240315_14_44_22_Pro.jpg')
 
-threshhold1 = 80
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
+
+img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+#img = undistort_img(img, cameraMatrix, dist)
+
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
+
+#img = cv.resize(img, (640, 480))
+b = img.copy()
+b[:, :, 2] = 0
+b[:, :, 1] = 0
+
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
+
+
+gray = cv.cvtColor(b, cv.COLOR_RGB2GRAY)
+#gray = cv.GaussianBlur(gray, (5, 5), 10)
+
+threshhold1 = 200
 threshhold2 = 120
 mask1 = cv.bitwise_not(cv.threshold(gray, threshhold1, threshhold2, cv.THRESH_OTSU)[1])
-mask = cv.bitwise_not(cv.adaptiveThreshold(gray, threshhold1, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 25, 10))
+mask = cv.bitwise_not(cv.adaptiveThreshold(gray, threshhold1, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, 8))
+
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
+
 mask = cv.bitwise_and(mask, mask1)
-mask = cv.inRange(mask, 220, 255)
+mask = cv.inRange(mask, 200, 255)
 
-print(mask.dtype)
-print(gray.dtype)
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
+
 can = cv.Canny(mask, 100, 125, apertureSize=7, L2gradient=True)
-
+'''
 lines = cv.HoughLines(
     can,
     1,
-    np.pi/180,
+    np.pi/90,
     100,
     min_theta=0,
     max_theta=np.pi
 )
+'''
+
+lines = cv.HoughLinesP(
+    can,
+    1,
+    np.pi/90,
+    100,
+    minLineLength=50,
+    maxLineGap=100
+)
+
+end = time.time()
+totalTime = end - start
+print("Time: ", totalTime)
 
 lines_ = []
+img_lines = img.copy()
 
-for line in lines:
-    rho,theta = line[0]
-    a = np.cos(theta)
-    b = np.sin(theta)
-    x0 = a * rho
-    y0 = b * rho
-    # x1 stores the rounded off value of (r * cos(theta) - 1000 * sin(theta))
-    x1 = int(x0 + 1000 * (-b))
-    # y1 stores the rounded off value of (r * sin(theta)+ 1000 * cos(theta))
-    y1 = int(y0 + 1000 * (a))
-    # x2 stores the rounded off value of (r * cos(theta)+ 1000 * sin(theta))
-    x2 = int(x0 - 1000 * (-b))
-    # y2 stores the rounded off value of (r * sin(theta)- 1000 * cos(theta))
-    y2 = int(y0 - 1000 * (a))
-    lines_.append([x1, y1, x2, y2, (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])
+if lines is not None:
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        lines_.append([x1, y1, x2, y2, (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])
 
-for line in lines_:
-    x1, y1, x2, y2, angle = line
-    print(angle)
-    for line_ in lines_:
-        x1_, y1_, x2_, y2_, angle_ = line_
-        if 10 > abs(angle - angle_) > 0 and line != line_:
-            print("Removed: ", line)
-            print("diff: ", abs(angle - angle_))
-            lines_.remove(line_)
-            break
+    for i in range(2):
+        for line in lines_:
+            x1, y1, x2, y2, angle = line
+            print("evaluating", line)
+            print()
+            for line_ in lines_:
+                x1_, y1_, x2_, y2_, angle_ = line_
+                if line == line_:   # Skip the same line
+                    continue
+                if angle > 90:
+                    angle = 180 - angle
+                if 10 > abs(angle - angle_) > 0:
+                    print("Removed: ", line_)
+                    print("diff: ", abs(angle - angle_))
+                    lines_.remove(line_)
+                else:
+                    print("Not Removed: ", line_)
+                    print("diff: ", abs(angle - angle_))
+            print()
 
-for line in lines_:
-    x1, y1, x2, y2, angle = line
-    cv.line(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    print(angle)
-print(lines.shape)
-print(lines_.__len__())
+    if 2 <= lines_.__len__() < 4:
+        print("Lines: ", lines_)
+        x1, y1, x2, y2, angle = lines_[0]
+        x = [x1, x2]
+        y = [y1, y2]
+        x.sort()
+        y.sort()
+        x1, x2 = x
+        y1, y2 = y
+        slope = (y2 - y1) / (x2 - x1)
+        b = y1 - slope * x1
+        lines_[0][0] = int((img.shape[0] - b) / slope)
+        lines_[0][1] = img.shape[0]
+        lines_[0][2] = int((lines_[1][3] - b) / slope)
+        lines_[0][3] = lines_[1][3]
+        print("Line 0: ", lines_[0])
+        x1, y1, x2, y2, angle = lines_[1]
+        x = [x1, x2]
+        x_ = [x1, x2]
+        x.sort()
+        if x != x_:
+            x1, x2 = x_
+            y = [y1, y2]
+            y2, y1 = y
+        slope = (y2 - y1) / (x2 - x1)
+        b = y1 - slope * x1
+        lines_[1][0] = int((img.shape[0] - b) / slope)
+        lines_[1][1] = img.shape[0]
+        print("Line 1: ", lines_[1])
+
+        error_line = [int((lines_[0][0] + lines_[1][0]) / 2), img.shape[0], int((lines_[0][2] + lines_[1][2]) / 2), lines_[1][3], 0]
+        x1, y1, x2, y2, null = error_line
+        error_line[4] = (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)
+        error = abs(error_line[4])-90
+        print("Error Line: ", error_line)
+        cv.line(img_lines, (x1, y1), (x2, y2), (100, 100, 255), 5)
+        cv.putText(img_lines, " Error: "+str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+    for line in lines_:
+        x1, y1, x2, y2, angle = line
+        cv.line(img_lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv.putText(img_lines, " Line "+str(lines_.index(line)), (int((x2+x1)/2), int((y2+y1)/2)), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+        cv.circle(img_lines, (x1, y1), 5, (255, 0, 0), -1)
+        cv.putText(img_lines, str(x1)+", "+str(y1), (x1, y1), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+        cv.circle(img_lines, (x2, y2), 5, (255, 255, 0), -1)
+        cv.putText(img_lines, str(x2) + ", " + str(y2), (x2, y2), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+        print(angle)
+
+
+    print(lines.shape)
+    print(lines_.__len__())
 
 end = time.time()
 totalTime = end - start
 fps = 1 / totalTime
 print("FPS: ", fps)
-cv.imshow("image", img)
-cv.waitKey(0)
+
 
 titles = ['Original Image', 'Canny', 'Mask', 'gray']
-images = [b, can, mask, gray]
-'''
+images = [img, can, mask, gray]
+
 for i in range(4):
     plt.subplot(2, 2, i+1), plt.imshow(images[i], 'gray')
     plt.title(titles[i])
     plt.xticks([]), plt.yticks([])
 
+cv.imshow("image", img_lines)
 plt.show()
-'''
+
+cv.waitKey(0)
+
 
 
 

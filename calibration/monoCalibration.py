@@ -21,7 +21,7 @@ objpoints = []  # 3d point in real world space
 imgpoints = []  # 2d points in image plane.
 
 # Get the path of the images
-images = glob.glob('calibration_images/camara juan/*.jpg')
+images = glob.glob('calibration_images/webcam-genius/*.jpg')
 
 for image in images:
     print(image)

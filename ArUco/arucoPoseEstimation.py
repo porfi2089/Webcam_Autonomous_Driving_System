@@ -67,7 +67,7 @@ def pose_estimation(frame, aruco_dict_type, matrix_coefficients, distortion_coef
     cv2.aruco_dict = cv2.aruco.getPredefinedDictionary(aruco_dict_type)
     parameters = cv2.aruco.DetectorParameters()
 
-    corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.aruco_dict,parameters=parameters,
+    corners, ids, rejected_img_points = cv2.aruco.detectMarkers(gray, cv2.,parameters=parameters,
         cameraMatrix=matrix_coefficients,
         distCoeff=distortion_coefficients)
 

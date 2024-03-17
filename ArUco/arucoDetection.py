@@ -70,9 +70,6 @@ arucoParams = cv2.aruco.DetectorParameters()
 
 cap = cv2.VideoCapture(0)
 
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-
 
 while cap.isOpened():
 	ret, img = cap.read()
