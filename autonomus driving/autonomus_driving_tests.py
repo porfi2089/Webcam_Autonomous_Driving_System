@@ -34,27 +34,19 @@ load_cam_calib_data('../calibration/camCalibrationData.json')
 
 start = time.time()
 
-img = cv.imread('images/cam 2/WIN_20240315_14_44_22_Pro.jpg')
+img = cv.imread('images/cam 2/WIN_20240315_14_44_07_Pro (2).jpg')
 
 end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
+loadTime = end - start
+print("Time: ", loadTime)
 
 img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
 #img = undistort_img(img, cameraMatrix, dist)
-
-end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
 
 #img = cv.resize(img, (640, 480))
 b = img.copy()
 b[:, :, 2] = 0
 b[:, :, 1] = 0
-
-end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
 
 
 gray = cv.cvtColor(b, cv.COLOR_RGB2GRAY)
@@ -65,16 +57,10 @@ threshhold2 = 120
 mask1 = cv.bitwise_not(cv.threshold(gray, threshhold1, threshhold2, cv.THRESH_OTSU)[1])
 mask = cv.bitwise_not(cv.adaptiveThreshold(gray, threshhold1, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, 8))
 
-end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
 
 mask = cv.bitwise_and(mask, mask1)
 mask = cv.inRange(mask, 200, 255)
 
-end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
 
 can = cv.Canny(mask, 100, 125, apertureSize=7, L2gradient=True)
 '''
@@ -98,8 +84,8 @@ lines = cv.HoughLinesP(
 )
 
 end = time.time()
-totalTime = end - start
-print("Time: ", totalTime)
+transformTime = end - start
+print("Time: ", transformTime)
 
 lines_ = []
 img_lines = img.copy()
@@ -167,6 +153,9 @@ if lines is not None:
         cv.line(img_lines, (x1, y1), (x2, y2), (100, 100, 255), 5)
         cv.putText(img_lines, " Error: "+str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
                    cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+
+    # elif lines_.__len__() == 1:
+
     for line in lines_:
         x1, y1, x2, y2, angle = line
         cv.line(img_lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
@@ -184,6 +173,14 @@ if lines is not None:
 end = time.time()
 totalTime = end - start
 fps = 1 / totalTime
+totalTime_Ms = (totalTime * 1000)
+loadTime_Ms = (loadTime * 1000)
+transformTime_Ms = ((transformTime-loadTime) * 1000)
+sortTime_ms = (totalTime_Ms - (transformTime_Ms + loadTime_Ms))
+print("Time to load: ", str("{:.2f}".format(loadTime_Ms)) + "ms")
+print("Time to transform: ", str("{:.2f}".format(transformTime_Ms)) + "ms")
+print("Time to sort: ", str("{:.2f}".format(sortTime_ms)) + "ms")
+print("Time: ", str("{:.2f}".format(totalTime_Ms)) + "ms")
 print("FPS: ", fps)
 
 

@@ -49,13 +49,17 @@ cv.destroyAllWindows()
 
 ############## CALIBRATION #######################################################
 
-ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, framesize, None, None)
+calibrationData = cv.calibrateCamera(objpoints, imgpoints, framesize, None, None)
+ret, cameraMatrix, dist, rvecs, tvecs = calibrationData
+np.savez("calibrationData", camMatrix=cameraMatrix, distCoef=dist, rVector=rvecs, tVector=tvecs)
 
-
-calib = '{"cameraMatrix": [], "dist": []}'
+calib = '{"cameraMatrix": [], "dist": [], "rvecs": [], "tvecs": []}'
 calibData = json.loads(calib)
 calibData["cameraMatrix"] = cameraMatrix.tolist()
 calibData["dist"] = dist.tolist()
+calibData["rvecs"] = [np.array(rvec).tolist() for rvec in rvecs]
+calibData["tvecs"] = [np.array(tvec).tolist() for tvec in tvecs]
+
 
 with open("camCalibrationData.json", "w") as cal:
     json.dump(calibData, cal)
