@@ -9,6 +9,8 @@ param_markers = aruco.DetectorParameters()
 
 cap = cv.VideoCapture(2)
 
+pts2 = [[0, 0], [0, 480], [640, 0], [640, 480]]
+pts2 = [[0, 0], [0, 480], [640, 0], [640, 480]]
 while True:
     start = time.time()
     ret, frame = cap.read()
@@ -39,7 +41,7 @@ while True:
                 2,
                 cv.LINE_AA,
             )
-
+		if
     end = time.time()
     totalTime = end - start
     fps = 1 / totalTime
