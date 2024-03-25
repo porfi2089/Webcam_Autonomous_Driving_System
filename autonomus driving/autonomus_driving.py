@@ -6,6 +6,23 @@ import json
 import math
 
 
+def load_config_data(filepath='configData.json'):
+    with open(filepath, 'r') as f:
+        configData = json.loads(f.read())
+
+    global lineReductions
+    global camIndex
+    global thresholds
+    global frameSize
+    global adaptiveSettings
+
+    lineReductions = configData['line_reductions']
+    camIndex = configData['cam_index']
+    thresholds = np.array(configData['thresholds'])
+    frameSize = np.array(configData['frame_size'])
+    adaptiveSettings = np.array(configData['adaptive_settings'])
+
+
 def load_cam_calib_data(filepath='camCalibrationData.json'):
     with open(filepath, 'r') as f:
         camCalibData = json.loads(f.read())
@@ -35,17 +52,17 @@ def undistort_img(_img, _cameraMatrix, _dist):
     dst = dst[y:y+h, x:x+w]
     return dst
 
-
+# program Start
+load_config_data()
 load_cam_calib_data('../calibration/camCalibrationData.json')
 load_unwrap_data()
-cap = cv.VideoCapture(0)
 
-cap.set(cv.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv.CAP_PROP_FRAME_HEIGHT, 480)
+cap = cv.VideoCapture(camIndex)
+
+cap.set(cv.CAP_PROP_FRAME_WIDTH, frameSize[0])
+cap.set(cv.CAP_PROP_FRAME_HEIGHT, frameSize[1])
 pts1 = [(unwrap_cent[3][0], unwrap_cent[3][1]), (unwrap_cent[2][0], unwrap_cent[2][1]), (unwrap_cent[0][0], unwrap_cent[0][1]), (unwrap_cent[1][0], unwrap_cent[1][1])]
-_w = 640
-_h = 480
-pts2 = [[0, 0], [0, _h], [_w, 0], [_w, _h]]
+pts2 = [[0, 0], [0, frameSize[1]], [frameSize[0], 0], [frameSize[0], frameSize[1]]]
 matrix = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
 
 while cap.isOpened():
@@ -59,7 +76,7 @@ while cap.isOpened():
 
     img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
     #img = undistort_img(img, cameraMatrix, dist)
-    img = cv.warpPerspective(img, matrix, (640, 480))
+    img = cv.warpPerspective(img, matrix, (frameSize[0], frameSize[1]))
 
     b = img.copy()
     b[:, :, 2] = 0
@@ -67,10 +84,9 @@ while cap.isOpened():
 
     gray = cv.cvtColor(b, cv.COLOR_RGB2GRAY)
 
-    threshhold1 = 200
-    threshhold2 = 120
-    mask1 = cv.bitwise_not(cv.threshold(gray, threshhold1, threshhold2, cv.THRESH_OTSU)[1])
-    mask = cv.bitwise_not(cv.adaptiveThreshold(gray, threshhold1, cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, 15, 8))
+
+    mask1 = cv.bitwise_not(cv.threshold(gray, thresholds[0], thresholds[1], cv.THRESH_OTSU)[1])
+    mask = cv.bitwise_not(cv.adaptiveThreshold(gray, thresholds[0], cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, adaptiveSettings[0], adaptiveSettings[1]))
 
 
     mask = cv.bitwise_and(mask, mask1)
@@ -100,17 +116,21 @@ while cap.isOpened():
             x1, y1, x2, y2 = line[0]
             lines_.append([x1, y1, x2, y2, (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])
 
-        for i in range(2):
-            for line in lines_:
+        for i in range(lineReductions):
+            for line, enum in zip(lines_, enumerate(lines_)):
                 x1, y1, x2, y2, angle = line
                 print("evaluating", line)
                 print()
+                if angle > 90:
+                    angle = -180 + angle
+                    lines_[enum][4] = angle
+                elif angle < -90:
+                    angle = 180 + angle
+                    lines_[enum][4] = angle
                 for line_ in lines_:
                     x1_, y1_, x2_, y2_, angle_ = line_
                     if line == line_:   # Skip the same line
                         continue
-                    if angle > 90:
-                        angle = 180 - angle
                     if 10 > abs(angle - angle_) > 0:
                         print("Removed: ", line_)
                         print("diff: ", abs(angle - angle_))
@@ -120,6 +140,17 @@ while cap.isOpened():
                         print("diff: ", abs(angle - angle_))
                 print()
 
+        vert_lines = []
+        hori_lines = []
+
+        for line in lines_:
+            x1, y1, x2, y2, angle = line
+            if -45 < angle < 45:
+                vert_lines = np.append(vert_lines, [line])
+            else:
+                hori_lines = np.append(hori_lines, [line])
+
+        lines_ = np.append(vert_lines, hori_lines)
         if 2 <= lines_.__len__() < 4:
             print("Lines: ", lines_)
             x1, y1, x2, y2, angle = lines_[0]
