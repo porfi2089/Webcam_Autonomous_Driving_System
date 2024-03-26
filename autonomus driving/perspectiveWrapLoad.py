@@ -53,33 +53,26 @@ while True:
             marker_indexs = []
             true_centers = []
             print(centers)
-            for did in Des_marker_IDs:
+            try:
+                for did in Des_marker_IDs:
+                    index = marker_IDs_ref.index(did)
+                    print(index)
+                    marker_indexs.append(index)
+                    print(centers[index])
+                    true_centers.append(centers[index])
 
-                index = marker_IDs_ref.index(did)
-                print(index)
-                marker_indexs.append(index)
-                print(centers[index])
-                true_centers.append(centers[index])
-
-            print(true_centers)
-            corners = true_centers
-            pts1 = [(corners[3][0], corners[3][1]), (corners[2][0], corners[2][1]), (corners[0][0], corners[0][1]), (corners[1][0], corners[1][1])]
-            pts2 = [[0, 0], [0, 480], [640, 0], [640, 480]]
-            '''cv.circle(img, pts1[0], 5, (0, 0, 255), -1)
-            cv.putText(img, '1 ' + str(pts1[0]), pts1[0], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-            cv.circle(img, pts1[1], 5, (0, 0, 255), -1)
-            cv.putText(img, '2 ' + str(pts1[1]), pts1[1], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-            cv.circle(img, pts1[2], 5, (0, 0, 255), -1)
-            cv.putText(img, '3 ' + str(pts1[2]), pts1[2], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-            cv.circle(img, pts1[3], 5, (0, 0, 255), -1)
-            cv.putText(img, '4 ' + str(pts1[3]), pts1[3], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)'''
-            matrix = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
-            result = cv.warpPerspective(frame, matrix, (640, 480))
-            cv.polylines(
-                frame, [np.array(corners).astype(np.int32)], True, (0, 0, 255), 4, cv.LINE_AA
-            )
-            cv.imshow('result', result)
-
+                print(true_centers)
+                corners = true_centers
+                pts1 = [(corners[3][0], corners[3][1]), (corners[2][0], corners[2][1]), (corners[0][0], corners[0][1]), (corners[1][0], corners[1][1])]
+                pts2 = [[0, 0], [0, 480], [640, 0], [640, 480]]
+                matrix = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
+                result = cv.warpPerspective(frame, matrix, (640, 480))
+                cv.polylines(
+                    frame, [np.array(corners).astype(np.int32)], True, (0, 0, 255), 4, cv.LINE_AA
+                )
+                cv.imshow('result', result)
+            except:
+                pass
     end = time.time()
     totalTime = end - start
     fps = 1 / totalTime
@@ -98,16 +91,5 @@ while True:
 
 cap.release()
 cv.destroyAllWindows()
-
-
-'''cv.circle(img, pts1[0], 5, (0, 0, 255), -1)
-cv.putText(img, '1 '+str(pts1[0]), pts1[0], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-cv.circle(img, pts1[1], 5, (0, 0, 255), -1)
-cv.putText(img, '2 '+str(pts1[1]), pts1[1], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-cv.circle(img, pts1[2], 5, (0, 0, 255), -1)
-cv.putText(img, '3 '+str(pts1[2]), pts1[2], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)
-cv.circle(img, pts1[3], 5, (0, 0, 255), -1)
-cv.putText(img, '4 '+str(pts1[3]), pts1[3], cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 255), 2, cv.LINE_AA)'''
-
 
 cv.waitKey(0)

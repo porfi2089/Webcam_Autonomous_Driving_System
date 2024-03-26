@@ -41,7 +41,7 @@ while True:
                 2,
                 cv.LINE_AA,
             )
-		if
+
     end = time.time()
     totalTime = end - start
     fps = 1 / totalTime

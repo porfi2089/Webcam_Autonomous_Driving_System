@@ -6,7 +6,7 @@ import json
 import math
 
 
-def load_config_data(filepath='configData.json'):
+def load_config_data(filepath='config_data.json'):
     with open(filepath, 'r') as f:
         configData = json.loads(f.read())
 
@@ -32,12 +32,14 @@ def load_cam_calib_data(filepath='camCalibrationData.json'):
     cameraMatrix = np.array(camCalibData['cameraMatrix'])
     dist = np.array(camCalibData['dist'])
 
+
 def load_unwrap_data(filepath='unwrap_data.json'):
     with open(filepath, 'r') as f:
         unwrapData = json.loads(f.read())
 
     global unwrap_cent
     unwrap_cent = np.array(unwrapData['centers'])
+
 
 def undistort_img(_img, _cameraMatrix, _dist):
     h,  w = _img.shape[:2]
@@ -51,6 +53,7 @@ def undistort_img(_img, _cameraMatrix, _dist):
     x, y, w, h = roi
     dst = dst[y:y+h, x:x+w]
     return dst
+
 
 # program Start
 load_config_data()
@@ -73,9 +76,8 @@ while cap.isOpened():
         continue
     start = time.time()
 
-
     img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    #img = undistort_img(img, cameraMatrix, dist)
+    # img = undistort_img(img, cameraMatrix, dist)
     img = cv.warpPerspective(img, matrix, (frameSize[0], frameSize[1]))
 
     b = img.copy()
@@ -84,14 +86,11 @@ while cap.isOpened():
 
     gray = cv.cvtColor(b, cv.COLOR_RGB2GRAY)
 
-
     mask1 = cv.bitwise_not(cv.threshold(gray, thresholds[0], thresholds[1], cv.THRESH_OTSU)[1])
     mask = cv.bitwise_not(cv.adaptiveThreshold(gray, thresholds[0], cv.ADAPTIVE_THRESH_MEAN_C, cv.THRESH_BINARY, adaptiveSettings[0], adaptiveSettings[1]))
 
-
     mask = cv.bitwise_and(mask, mask1)
     mask = cv.inRange(mask, 200, 255)
-
 
     can = cv.Canny(mask, 100, 125, apertureSize=7, L2gradient=True)
 
@@ -151,7 +150,7 @@ while cap.isOpened():
                 hori_lines = np.append(hori_lines, [line])
 
         lines_ = np.append(vert_lines, hori_lines)
-        if 2 <= lines_.__len__() < 4:
+        if 2 <= vert_lines.__len__() < 3:
             print("Lines: ", lines_)
             x1, y1, x2, y2, angle = lines_[0]
             x = [x1, x2]
@@ -200,7 +199,16 @@ while cap.isOpened():
             cv.line(img_lines, (x1, y1), (x2, y2), (100, 100, 255), 5)
             cv.putText(img_lines, " Error: "+str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
-
+        elif vert_lines.__len__() == 1:
+            print("Lines: ", lines_)
+            error_line = lines_[0]
+            x1, y1, x2, y2, null = error_line
+            error_line[4] = (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)
+            error = abs(error_line[4])
+            print("Error Line: ", error_line)
+            cv.line(img_lines, (x1, y1), (x2, y2), (100, 100, 255), 5)
+            cv.putText(img_lines, " Error: " + str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
+                       cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
 
         for line in lines_:
             x1, y1, x2, y2, angle = line
@@ -212,7 +220,6 @@ while cap.isOpened():
             cv.putText(img_lines, str(x2) + ", " + str(y2), (x2, y2), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
             print(angle)
 
-
         print(lines.shape)
         print(lines_.__len__())
 
@@ -222,7 +229,6 @@ while cap.isOpened():
     totalTime_Ms = (totalTime * 1000)
     print("Time: ", str("{:.2f}".format(totalTime_Ms)) + "ms")
     print("FPS: ", fps)
-
 
     cv.putText(img, f'FPS: {int(fps)}', (20, 70), cv.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 2)
     cv.imshow("image", img_lines)
