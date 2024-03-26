@@ -113,30 +113,32 @@ while cap.isOpened():
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
-            lines_.append([x1, y1, x2, y2, (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])
-
+            lines_.append([x1, y1, x2, y2, -90+(math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])
+        print(lines_)
         for i in range(lineReductions):
-            for line, enum in zip(lines_, enumerate(lines_)):
+            for line in lines_:
+                print(line)
                 x1, y1, x2, y2, angle = line
-                print("evaluating", line)
-                print()
+                # print("evaluating", line)
+                # print()
                 if angle > 90:
                     angle = -180 + angle
-                    lines_[enum][4] = angle
+                    lines_[lines_.index(line)][4] = angle
                 elif angle < -90:
                     angle = 180 + angle
-                    lines_[enum][4] = angle
+                    lines_[lines_.index(line)][4] = angle
                 for line_ in lines_:
                     x1_, y1_, x2_, y2_, angle_ = line_
                     if line == line_:   # Skip the same line
                         continue
                     if 10 > abs(angle - angle_) > 0:
-                        print("Removed: ", line_)
-                        print("diff: ", abs(angle - angle_))
+                        # print("Removed: ", line_)
+                        # print("diff: ", abs(angle - angle_))
                         lines_.remove(line_)
                     else:
-                        print("Not Removed: ", line_)
-                        print("diff: ", abs(angle - angle_))
+                        # print("Not Removed: ", line_)
+                        # print("diff: ", abs(angle - angle_))
+                        pass
                 print()
 
         vert_lines = []
@@ -144,13 +146,20 @@ while cap.isOpened():
 
         for line in lines_:
             x1, y1, x2, y2, angle = line
+            print(hori_lines.__len__())
+            print(vert_lines.__len__())
             if -45 < angle < 45:
-                vert_lines = np.append(vert_lines, [line])
+                vert_lines.append(line)
             else:
-                hori_lines = np.append(hori_lines, [line])
-
-        lines_ = np.append(vert_lines, hori_lines)
-        if 2 <= vert_lines.__len__() < 3:
+                hori_lines.append(line)
+        print(hori_lines)
+        print(vert_lines)
+        lines_ = []
+        for i in range(vert_lines.__len__()):
+            lines_.append(vert_lines[i])
+        for i in range(hori_lines.__len__()):
+            lines_.append(hori_lines[i])
+        if 2 <= vert_lines.__len__():
             print("Lines: ", lines_)
             x1, y1, x2, y2, angle = lines_[0]
             x = [x1, x2]
@@ -210,7 +219,9 @@ while cap.isOpened():
             cv.putText(img_lines, " Error: " + str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
                        cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
 
+        print(lines_)
         for line in lines_:
+            print(line)
             x1, y1, x2, y2, angle = line
             cv.line(img_lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv.putText(img_lines, " Line "+str(lines_.index(line)), (int((x2+x1)/2), int((y2+y1)/2)), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
