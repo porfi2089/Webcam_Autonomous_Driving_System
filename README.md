@@ -1,3 +1,4 @@
-Some openCV experiments
+openCV experiments for autonomus driving
 BY: Manuel Rao
-yes im following some random ah tutorials fo some things
+
+autonomus driving following a line and aruco markers to navegating inside a preloaded enviroment
