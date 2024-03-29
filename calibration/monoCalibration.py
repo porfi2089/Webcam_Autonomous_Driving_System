@@ -62,7 +62,7 @@ calibData["tvecs"] = [np.array(tvec).tolist() for tvec in tvecs]
 
 
 with open("camCalibrationData.json", "w") as cal:
-    json.dump(calibData, cal)
+    json.dump(calibData, cal, indent=4)
 
 
 ############## UNDISTORTION #####################################################

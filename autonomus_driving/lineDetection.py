@@ -227,9 +227,8 @@ def init_rec(camIndex, frameSize, unwrap_cent):
     cap.set(cv.CAP_PROP_FRAME_HEIGHT, frameSize[1])
 
     # generate transformation matrix
-    pts1 = [(unwrap_cent[3][0], unwrap_cent[3][1]), (unwrap_cent[2][0], unwrap_cent[2][1]), (unwrap_cent[0][0], unwrap_cent[0][1]), (unwrap_cent[1][0], unwrap_cent[1][1])]
     pts2 = [[0, 0], [0, frameSize[1]], [frameSize[0], 0], [frameSize[0], frameSize[1]]]
-    matrix = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
+    matrix = cv.getPerspectiveTransform(np.float32(unwrap_cent), np.float32(pts2))
     return cap, matrix
 
 error = 0
@@ -292,6 +291,11 @@ while cap.isOpened():
 
             
             error = process_errorLine(error_line)
+
+        if hori_lines.__len__() > 0:
+            for line in hori_lines:
+                x1, y1, x2, y2, angle = line
+                
 
         for line in lines_:
             draw_line(img_lines, line)

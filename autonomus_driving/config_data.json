@@ -4,5 +4,6 @@
   "thresholds": [200, 170],
   "frame_size": [640, 480],
   "adaptive_settings": [15, 8],
-  "Serial_settings": [115200, "COM3"]
+  "Serial_settings": [115200, "COM3"],
+  "horizontal_line_threshold": [10]
 }

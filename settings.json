@@ -1,0 +1,23 @@
+{
+    "line_reductions": 2,
+    "cam_index": 2,
+    "thresholds": [
+        2,
+        2
+    ],
+    "frame_size": [
+        2,
+        2
+    ],
+    "adaptive_settings": [
+        2,
+        2
+    ],
+    "Serial_settings": [
+        2,
+        "COM3"
+    ],
+    "horizontal_line_threshold": [
+        2
+    ]
+}
