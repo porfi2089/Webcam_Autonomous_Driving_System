@@ -3,7 +3,7 @@ from tkinter import ttk
 import cv2
 import json
 import numpy as np
-
+from PIL import Image, ImageTk
 
 # Create GUI
 root = tk.Tk()
@@ -129,24 +129,19 @@ update_button = tk.Button(root, text="Update", command=update_json)
 update_button.grid(row=len(labels)+1, columnspan=2, pady=10)
 
 # OpenCV display
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-cv_panel = tk.Label(image_frame, width=frame_width//2, height=frame_height//2)
+cv_panel = tk.Label(image_frame)
 cv_panel.pack(fill="both", expand=True)
 
 def update_frame():
-    try:
-        _, frame = cap.read()
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        cv2.imshow("frame", frame)
-        img = cv2.resize(frame, (frame_width//2, frame_height//2))
-        img_array = np.array(img)
-        img = tk.PhotoImage(data=img_array.tobytes())
-        cv_panel.img = img
-        cv_panel.config(image=img)
-    except:
-        pass
+    _, frame = cap.read()
+    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    img = Image.fromarray(frame)
+    imgtk = ImageTk.PhotoImage(image=img)
+    cv_panel.imgtk = imgtk
+    cv_panel.configure(image=imgtk)
     cv_panel.after(10, update_frame)
 
 update_frame()

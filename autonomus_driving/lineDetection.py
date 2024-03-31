@@ -15,12 +15,14 @@ def load_config_data(filepath='autonomus_driving\config_data.json'):
     global thresholds
     global frameSize
     global adaptiveSettings
+    global horizontalLineThreshold
 
     lineReductions = configData['line_reductions']
     camIndex = configData['cam_index']
     thresholds = np.array(configData['thresholds'])
     frameSize = np.array(configData['frame_size'])
     adaptiveSettings = np.array(configData['adaptive_settings'])
+    horizontalLineThreshold = configData["horizontal_line_threshold"][0]
 
 
 def load_cam_calib_data(filepath='camCalibrationData.json'):
@@ -175,12 +177,12 @@ def join_list_of_subs(list1, list2):
     return list3
 
 
-def process_errorLine(error_line):
+def process_errorLine(error_line, text="Error: "):
     x1, y1, x2, y2, null = error_line
     error_line[4] = (math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)
     error = abs(error_line[4])-90
     cv.line(img_lines, (x1, y1), (x2, y2), (100, 100, 255), 5)
-    cv.putText(img_lines, " Error: "+str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
+    cv.putText(img_lines, str(text)+str("{:.2f}".format(error)), (int((x2 + x1) / 2), int((y2 + y1) / 2)),
                 cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
     return error
 
@@ -231,7 +233,29 @@ def init_rec(camIndex, frameSize, unwrap_cent):
     matrix = cv.getPerspectiveTransform(np.float32(unwrap_cent), np.float32(pts2))
     return cap, matrix
 
+
+def check_side_of_point(point, line):
+    x1, y1, x2, y2, angle = line
+    if x1 == x2:
+        x2 = x2+0.5
+    slope, intercept = calculate_slope_and_intercept(x1, y1, x2, y2)
+    y = slope * point[0] + intercept
+    if point[1] < y:
+        return "above"
+    elif point[1] > y:
+        return "below"
+    else:
+        return "on"
+    
+
+#init variables
 error = 0
+#flags
+turnCentanty = 0
+turn = False
+turnRight = False
+turnLeft = False
+
 load_files()
 cap, matrix = init_rec(camIndex, frameSize, unwrap_cent)
 
@@ -292,10 +316,38 @@ while cap.isOpened():
             
             error = process_errorLine(error_line)
 
-        if hori_lines.__len__() > 0:
-            for line in hori_lines:
-                x1, y1, x2, y2, angle = line
+        if hori_lines.__len__() == 1:
+            hori_lines = hori_lines[0]
+            x1, y1, x2, y2, angle = hori_lines
+            hori_line = hori_lines
                 
+        if hori_lines.__len__() == 2:
+            hori_lines = process_2lines(hori_lines, img)
+            hori_line = [int((hori_lines[0][0] + hori_lines[1][0]) / 2), img.shape[0], int((hori_lines[0][2] + hori_lines[1][2]) / 2), hori_lines[1][3], 0]
+
+        if hori_line == 1:
+            x1, y1, x2, y2, angle = hori_line
+            cv.line(img_lines, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv.putText(img_lines, " Line 1", (int((x2+x1)/2), int((y2+y1)/2)), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2, cv.LINE_AA)
+            x = (x1 + x2) / 2
+            y = (y1 + y2) / 2
+            if turn == False:
+                if y > horizontalLineThreshold:
+                    if turnCentanty < 5:
+                        turnCentanty += 24
+                    else:
+                        turn = True
+                        turnCentanty = 0
+                elif y < horizontalLineThreshold:
+                    if turnCentanty > 0:
+                        turnCentanty -= 1
+            else:
+                if not turnRight and not turnLeft:
+                    side = check_side_of_point([x, y], error_line)
+                    if side == "above":
+                        turnLeft = True
+                    elif side == "below":
+                        turnRight = True
 
         for line in lines_:
             draw_line(img_lines, line)
