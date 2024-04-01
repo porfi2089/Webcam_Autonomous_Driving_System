@@ -17,6 +17,6 @@
         9600,
         "COM1"
     ],
-    "horizontal_line_threshold": 240,
-    "line_width": 80
+    "horizontal_line_threshold": 335,
+    "line_width": 278
 }

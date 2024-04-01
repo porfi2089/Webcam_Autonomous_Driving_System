@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import json
 import math
 
+# Load procedures for Json files
 def load_config_data(filepath='autonomus_driving\settings.json'):
     with open(filepath, 'r') as f:
         configData = json.loads(f.read())
@@ -212,11 +213,11 @@ def reduce_lines(lineReductions, lines_):
                     if line == line_:   # Skip the same line
                         continue
                     if 10 > abs(angle - angle_) > 0:
-                        # print("Removed: ", line_)
+                        print("Removed: ", line_)
                         # print("diff: ", abs(angle - angle_))
                         lines_.remove(line_)
                     else:
-                        # print("Not Removed: ", line_)
+                        print("Not Removed: ", line_)
                         # print("diff: ", abs(angle - angle_))
                         pass
 
@@ -276,122 +277,121 @@ turnRight = False
 turnLeft = False
 
 load_files()
-cap, matrix = init_rec(camIndex, frameSize, unwrap_cent)
+cam, matrix = init_rec(camIndex, frameSize, unwrap_cent)
 
-while cap.isOpened():
-    try:
-        start
-    except NameError:
-        start = time.time()
-    try:
-        img
-    except NameError:
-        img = None
+try:
+    start
+except NameError:
+    start = time.time()
+try:
+    img
+except NameError:
+    img = None
 
-    img = get_frame(cap, img)
-    if img is None:
-        continue
-    img = convert_frame(img, cameraMatrix, dist, matrix, frameSize)
-    r, g, b = filter_RGB(img)
-    gray = convert_to_gray(b)
-    mask = apply_thresholds(gray, thresholds, adaptiveSettings)
-    can = apply_canny(mask)
-    lines = get_lines(can)
-    lines_ = []
-    img_lines = img.copy()
+img = cv.imread(r"autonomus_driving\images\cam 2\WIN_20240315_14_44_26_Pro.jpg")
+img = convert_frame(img, cameraMatrix, dist, matrix, frameSize)
+r, g, b = filter_RGB(img)
+gray = convert_to_gray(b)
+mask = apply_thresholds(gray, thresholds, adaptiveSettings)
+can = apply_canny(mask)
+lines = get_lines(can)
+lines_ = []
+img_lines = img.copy()
 
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            lines_.append([x1, y1, x2, y2, -90+(math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])        
-        
-        correct_angles(lines_)
-        reduce_lines(lineReductions, lines_)        
+if lines is not None:
+    for line in lines:
+        x1, y1, x2, y2 = line[0]
+        lines_.append([x1, y1, x2, y2, -90+(math.atan2(y2 - y1, x2 - x1) * 180 / np.pi)])        
+    print("Lines: ", lines_)
+    correct_angles(lines_)
+    reduce_lines(lineReductions, lines_)        
 
-        vert_lines = []
-        hori_lines = []
+    vert_lines = []
+    hori_lines = []
 
-        for line in lines_:
-            x1, y1, x2, y2, angle = line
-            if -45 < angle < 45:
-                vert_lines.append(line)
-            else:
-                hori_lines.append(line)
+    for line in lines_:
+        x1, y1, x2, y2, angle = line
+        if -45 < angle < 45:
+            vert_lines.append(line)
+        else:
+            hori_lines.append(line)
 
-        lines_ = join_list_of_subs(vert_lines, hori_lines)
-        if 2 <= vert_lines.__len__():
+    lines_ = join_list_of_subs(vert_lines, hori_lines)
+    print("Lines: ", lines_)
+    print("Vert Lines: ", vert_lines)
+    print("Hori Lines: ", hori_lines)
+    if 2 <= vert_lines.__len__():
 
-                process_2lines(lines_, img)
+            process_2lines(lines_, img)
 
-                error_line = [int((lines_[0][0] + lines_[1][0]) / 2), img.shape[0], int((lines_[0][2] + lines_[1][2]) / 2), lines_[1][3], 0]
-                error_line_center = [int((error_line[0] + error_line[1]) / 2), int((error_line[2] + error_line[3]) / 2)]
-                ang_error, pos_error = process_errorLine(error_line)
-
-        elif vert_lines.__len__() == 1:
-
-            error_line = lines_[0]
-            error_line_center = [int((lines_[0][0] + lines_[0][2]) / 2), int((img.shape[0] + lines_[0][3]) / 2)]
-            blured = cv.GaussianBlur(gray, (51, 51), 10)
-            left_avg = np.mean(blured[error_line_center[1], :error_line_center[0]])
-            right_avg = np.mean(blured[error_line_center[1], error_line_center[0]:])
-            if left_avg > right_avg:
-                line_width_ = line_width
-            else:
-                line_width_ = -line_width
-            line_width_ = rotate([line_width_, 0], error_line[4])
-            error_line = [error_line[0] + int(line_width_[0]), error_line[1] + int(line_width_[1]), error_line[2] + int(line_width_[0]), error_line[3] + int(line_width_[1]), error_line[4]]
+            error_line = [int((lines_[0][0] + lines_[1][0]) / 2), img.shape[0], int((lines_[0][2] + lines_[1][2]) / 2), lines_[1][3], 0]
+            error_line_center = [int((error_line[0] + error_line[1]) / 2), int((error_line[2] + error_line[3]) / 2)]
             ang_error, pos_error = process_errorLine(error_line)
 
-        if hori_lines.__len__() == 1:
-            hori_lines = hori_lines[0]
-            x1, y1, x2, y2, angle = hori_lines
-            hori_line = hori_lines
-            x = (x1 + x2) / 2
-            y = (y1 + y2) / 2
-            cv.circle(img_lines, (int(x), int(y)), 5, (255, 0, 0), -1)
-            if turn == False:
-                if y > horizontalLineThreshold:
-                    if turnCentanty < 5:
-                        turnCentanty += 24
-                    else:
-                        turn = True
-                        turnCentanty = 0
-                elif y < horizontalLineThreshold:
-                    if turnCentanty > 0:
-                        turnCentanty -= 1
-            else:
-                if not turnRight and not turnLeft:
-                    side = check_side_of_point([x, y], error_line)
-                    if side == "above":
-                        turnLeft = True
-                    elif side == "below":
-                        turnRight = True
-            
-                
-        if hori_lines.__len__() == 2:
-            hori_lines = process_2lines(hori_lines, img)
-            hori_line = [int((hori_lines[0][0] + hori_lines[1][0]) / 2), img.shape[0], int((hori_lines[0][2] + hori_lines[1][2]) / 2), hori_lines[1][3], 0]
+    elif vert_lines.__len__() == 1:
 
+        error_line = lines_[0]
+        error_line_center = [int((lines_[0][0] + lines_[0][2]) / 2), int((img.shape[0] + lines_[0][3]) / 2)]
+        blured = cv.GaussianBlur(gray, (51, 51), 10)
+        left_avg = np.mean(blured[:, :int(error_line_center[0])])
+        right_avg = np.mean(blured[:, int(error_line_center[0]):])
+        if left_avg > right_avg:
+            line_width = line_width
+        else:
+            line_width = -line_width
+        line_width = rotate([line_width, 0], error_line[4])
+        print("Line Width: ", line_width)
+        print("Error Line: ", error_line)
+        error_line = [error_line[0] + int(line_width[0]), error_line[1] + int(line_width[1]), error_line[2] + int(line_width[0]), error_line[3] + int(line_width[1]), error_line[4]]
+        print("Error Line2: ", error_line)
+        ang_error, pos_error = process_errorLine(error_line)
+
+    if hori_lines.__len__() == 1:
+        hori_lines = hori_lines[0]
+        x1, y1, x2, y2, angle = hori_lines
+        hori_line = hori_lines
+        x = (x1 + x2) / 2
+        y = (y1 + y2) / 2
+        cv.circle(img_lines, (int(x), int(y)), 5, (255, 0, 0), -1)
+        if turn == False:
+            if y > horizontalLineThreshold:
+                if turnCentanty < 5:
+                    turnCentanty += 24
+                else:
+                    turn = True
+                    turnCentanty = 0
+            elif y < horizontalLineThreshold:
+                if turnCentanty > 0:
+                    turnCentanty -= 1
+        else:
+            if not turnRight and not turnLeft:
+                side = check_side_of_point([x, y], error_line)
+                if side == "above":
+                    turnLeft = True
+                elif side == "below":
+                    turnRight = True
         
+            
+    if hori_lines.__len__() == 2:
+        hori_lines = process_2lines(hori_lines, img)
+        hori_line = [int((hori_lines[0][0] + hori_lines[1][0]) / 2), img.shape[0], int((hori_lines[0][2] + hori_lines[1][2]) / 2), hori_lines[1][3], 0]
+
+    
 
     for line in lines_:
         draw_line(img_lines, line)
         
-    end = time.time()
-    totalTime = end - start
-    start = time.time()
-    fps = 1 / totalTime
-    totalTime_Ms = (totalTime * 1000)
-    # print("Time: ", str("{:.2f}".format(totalTime_Ms)) + "ms")
-    # print("FPS: ", fps)
-    can = cv.cvtColor(can, cv.COLOR_GRAY2BGR)
-    img_lines = cv.addWeighted(img_lines, 1, can, 0.8, 0)
-    cv.putText(img_lines, f'ang_error: {"{:.4f}".format(ang_error)}', (20, img.shape[0] - 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-    cv.putText(img_lines, f'pos_error: {pos_error}', (20, img.shape[0] - 40), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-    cv.imshow("image", img_lines)
-    key = cv.waitKey(1) & 0xFF
-    if key == ord("q"):
-        break
 
+end = time.time()
+totalTime = end - start
+start = time.time()
+fps = 1 / totalTime
+totalTime_Ms = (totalTime * 1000)
+# print("Time: ", str("{:.2f}".format(totalTime_Ms)) + "ms")
+# print("FPS: ", fps)
+can = cv.cvtColor(can, cv.COLOR_GRAY2BGR)
+img_lines = cv.addWeighted(img_lines, 1, can, 0.8, 0)
+cv.putText(img_lines, f'ang_error: {"{:.4f}".format(ang_error)}', (20, img.shape[0] - 70), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+cv.putText(img_lines, f'pos_error: {pos_error}', (20, img.shape[0] - 40), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+cv.imshow("image", img_lines)
 cv.waitKey(0)
-
