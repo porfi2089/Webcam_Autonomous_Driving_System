@@ -4,6 +4,8 @@ import numpy as np
 from matplotlib import pyplot as plt
 import json
 import math
+import PID
+import serial
 
 def load_config_data(filepath='autonomus_driving\settings.json'):
     with open(filepath, 'r') as f:
@@ -266,15 +268,38 @@ def rotate(coordinates, angle):
   return (newx, newy)
 
 
+def change_error_vars():
+    global old_ang_error
+    global old_pos_error
+    global old_pos_error_rate
+    global old_ang_error_rate
+    old_ang_error_rate = ang_error - old_ang_error
+    old_pos_error_rate = pos_error - old_pos_error   
+    old_ang_error = ang_error
+    old_pos_error = pos_error
+
 #init variables
 ang_error = 0
 pos_error = 0
+old_ang_error = 0
+old_pos_error = 0
+old_ang_error_rate = 0
+old_pos_error_rate = 0
+
+#PID
+pos_pid = PID.PID(0.1, 0.1, 0.1)
+ang_pid = PID.PID(0.1, 0.1, 0.1)
+
 #flags
 turnCentanty = 0
 turn = False
 turnRight = False
 turnLeft = False
 
+
+    
+
+# main
 load_files()
 cap, matrix = init_rec(camIndex, frameSize, unwrap_cent)
 
@@ -326,6 +351,7 @@ while cap.isOpened():
                 error_line = [int((lines_[0][0] + lines_[1][0]) / 2), img.shape[0], int((lines_[0][2] + lines_[1][2]) / 2), lines_[1][3], 0]
                 error_line_center = [int((error_line[0] + error_line[1]) / 2), int((error_line[2] + error_line[3]) / 2)]
                 ang_error, pos_error = process_errorLine(error_line)
+                change_error_vars()
 
         elif vert_lines.__len__() == 1:
 
@@ -341,6 +367,13 @@ while cap.isOpened():
             line_width_ = rotate([line_width_, 0], error_line[4])
             error_line = [error_line[0] + int(line_width_[0]), error_line[1] + int(line_width_[1]), error_line[2] + int(line_width_[0]), error_line[3] + int(line_width_[1]), error_line[4]]
             ang_error, pos_error = process_errorLine(error_line)
+            change_error_vars()
+            
+
+        elif vert_lines.__len__() == 0:
+            ang_error = old_ang_error + old_ang_error_rate
+            pos_error = old_pos_error + old_pos_error_rate
+            change_error_vars()
 
         if hori_lines.__len__() == 1:
             hori_lines = hori_lines[0]
@@ -376,7 +409,15 @@ while cap.isOpened():
 
     for line in lines_:
         draw_line(img_lines, line)
-        
+
+    # Actual PID
+    dt = time.time() - start
+    ang_pos_correction = pos_pid.update(0, pos_error, 1)
+    ang_correction = ang_pid.update(ang_pos_correction, ang_error, 1)
+    ser = serial.Serial('COM1', 115200)
+    ser.write(str(ang_correction).encode())
+    ser.close()
+
     end = time.time()
     totalTime = end - start
     start = time.time()
