@@ -1,3 +1,4 @@
+import time
 import tkinter as tk
 from tkinter import ttk
 import cv2 as cv
@@ -7,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageTk
 import os
 
-settings_path = r"autonomus_driving\settings.json"
+settings_path = "settings.json"
 
 def image_resize(image, width = None, height = None, inter = cv.INTER_AREA):
     # initialize the dimensions of the image to be resized and
@@ -48,7 +49,7 @@ def load_unwrap_data(filepath='unwrap_data.json'):
     global unwrap_cent
     unwrap_cent = np.array(unwrapData['centers'])
 
-load_unwrap_data(r'autonomus_driving\unwrap_data.json')
+load_unwrap_data('unwrap_data.json')
 # Create GUI
 root = tk.Tk()
 root.title("Settings Editor")
@@ -220,11 +221,16 @@ update_button = tk.Button(root, text="Update", command=update_json)
 update_button.grid(row=len(labels)+1, columnspan=2, pady=10)
 
 # OpenCV display
-cap = cv.VideoCapture(0)
-frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 cv_panel = tk.Label(image_frame)
 cv_panel.pack(fill="both", expand=True)
+cam_flag = False
+try:
+    cap = cv.VideoCapture(0)
+except:
+    cv_panel.configure(text="camera out of index, \n re-run application")
+    cam_flag = True
+frame_width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 
 marker_dict = aruco.getPredefinedDictionary(aruco.DICT_5X5_250)
 
@@ -233,83 +239,97 @@ param_markers = aruco.DetectorParameters()
 pts2 = [[0, 0], [0, 480], [640, 0], [640, 480]]
 matrix = cv.getPerspectiveTransform(np.float32(unwrap_cent), np.float32(pts2))
 
+time_since_camera = 0
+
 def update_frame():
     global r_presed
     global w_presed
-    _, frame = cap.read()
-    frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-    frame = cv.warpPerspective(frame, matrix, (640, 480))
-    gray_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    marker_corners, marker_IDs, reject = aruco.detectMarkers(
-        gray_frame, marker_dict, parameters=param_markers
-    )
-    centers = []
-    marker_IDs_ref = []
-    if marker_corners:
-        for ids, corners in zip(marker_IDs, marker_corners):
-            cv.polylines(
-                frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA
-            )
-            corners = corners.reshape(4, 2)
-            corners = corners.astype(int)
-            top_right = corners[0].ravel()
-            top_left = corners[1].ravel()
-            bottom_right = corners[2].ravel()
-            bottom_left = corners[3].ravel()
-            center = [int((top_left[0] + bottom_left[0])/2), int((top_left[1] + bottom_left[1])/2)]
-            centers.append(center)
-            cv.circle(frame, center, 3, (0, 0, 255), -1)
-            cv.putText(
-                frame,
-                f"id: {ids[0]}",
-                top_right,
-                cv.FONT_HERSHEY_PLAIN,
-                1.3,
-                (200, 100, 0),
-                2,
-                cv.LINE_AA,
-            )
-            marker_IDs_ref.append(ids[0])
-    if marker_IDs is not None:
-        if len(marker_IDs) == 1:
-            if r_presed:
-                print("Marker IDs: ", marker_IDs)
-                horizontal_line_threshold_entry.delete(0, "end")
-                horizontal_line_threshold_entry.insert(0, centers[0][1])
-                r_presed = False
-            if w_presed:
-                print("Single Marker Detected")
-                w_presed = False
-        if r_presed and len(marker_IDs) > 1:
-            print("Multiple Markers Detected")
-            r_presed = False
-        if len(marker_IDs) == 2:
-            distance = int(np.sqrt((centers[0][0] - centers[1][0])**2 + (centers[0][1] - centers[1][1])**2))
-            cv.line(frame, centers[0], centers[1], (0, 255, 0), 2)
-            cv.putText(frame, f"Distance: {distance}", (centers[0][0], centers[0][1]-10), cv.FONT_HERSHEY_PLAIN, 1.3, (0, 255, 0), 2, cv.LINE_AA)
-            if w_presed:
-                line_width_entry.delete(0, "end")
-                line_width_entry.insert(0, distance)
-                print("Distance between markers: ", distance)
-                w_presed = False
-    else:
-        if r_presed or w_presed:
-            print("No Markers Detected")
-            r_presed = False
-            w_presed = False
-        
-
+    global time_since_camera
     try:
-        frame = image_resize(frame, width=(cv_panel.winfo_width()-25))
-        if frame.shape[0] > cv_panel.winfo_height()-25:
-            frame = image_resize(frame, height=(cv_panel.winfo_height()-25))
+        _, frame = cap.read()
     except:
         pass
-    img = Image.fromarray(frame)
-    imgtk = ImageTk.PhotoImage(image=img)
-    cv_panel.imgtk = imgtk
-    cv_panel.configure(image=imgtk)
-    cv_panel.after(100, update_frame)
+    if _:
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        frame = cv.warpPerspective(frame, matrix, (640, 480))
+        gray_frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+        marker_corners, marker_IDs, reject = aruco.detectMarkers(
+            gray_frame, marker_dict, parameters=param_markers
+        )
+        centers = []
+        marker_IDs_ref = []
+        if marker_corners:
+            for ids, corners in zip(marker_IDs, marker_corners):
+                cv.polylines(
+                    frame, [corners.astype(np.int32)], True, (0, 255, 255), 4, cv.LINE_AA
+                )
+                corners = corners.reshape(4, 2)
+                corners = corners.astype(int)
+                top_right = corners[0].ravel()
+                top_left = corners[1].ravel()
+                bottom_right = corners[2].ravel()
+                bottom_left = corners[3].ravel()
+                center = [int((top_left[0] + bottom_left[0])/2), int((top_left[1] + bottom_left[1])/2)]
+                centers.append(center)
+                cv.circle(frame, center, 3, (0, 0, 255), -1)
+                cv.putText(
+                    frame,
+                    f"id: {ids[0]}",
+                    top_right,
+                    cv.FONT_HERSHEY_PLAIN,
+                    1.3,
+                    (200, 100, 0),
+                    2,
+                    cv.LINE_AA,
+                )
+                marker_IDs_ref.append(ids[0])
+        if marker_IDs is not None:
+            if len(marker_IDs) == 1:
+                if r_presed:
+                    print("Marker IDs: ", marker_IDs)
+                    horizontal_line_threshold_entry.delete(0, "end")
+                    horizontal_line_threshold_entry.insert(0, centers[0][1])
+                    r_presed = False
+                if w_presed:
+                    print("Single Marker Detected")
+                    w_presed = False
+            if r_presed and len(marker_IDs) > 1:
+                print("Multiple Markers Detected")
+                r_presed = False
+            if len(marker_IDs) == 2:
+                distance = int(np.sqrt((centers[0][0] - centers[1][0])**2 + (centers[0][1] - centers[1][1])**2))
+                cv.line(frame, centers[0], centers[1], (0, 255, 0), 2)
+                cv.putText(frame, f"Distance: {distance}", (centers[0][0], centers[0][1]-10), cv.FONT_HERSHEY_PLAIN, 1.3, (0, 255, 0), 2, cv.LINE_AA)
+                if w_presed:
+                    line_width_entry.delete(0, "end")
+                    line_width_entry.insert(0, distance)
+                    print("Distance between markers: ", distance)
+                    w_presed = False
+        else:
+            if r_presed or w_presed:
+                print("No Markers Detected")
+                r_presed = False
+                w_presed = False
+
+
+        try:
+            frame = image_resize(frame, width=(cv_panel.winfo_width()-25))
+            if frame.shape[0] > cv_panel.winfo_height()-25:
+                frame = image_resize(frame, height=(cv_panel.winfo_height()-25))
+        except:
+            pass
+        img = Image.fromarray(frame)
+        imgtk = ImageTk.PhotoImage(image=img)
+        cv_panel.imgtk = imgtk
+        cv_panel.configure(image=imgtk, text="")
+        cv_panel.after(50, update_frame)
+        time_since_camera = 0
+    else:
+        cv_panel.configure(text="No camera feed!! \n Something is fucked UP!")
+        time.sleep(100)
+        cv_panel.after(200, update_frame())
+           
+        time_since_camera = time_since_camera + 0.2
 
 update_frame()
 

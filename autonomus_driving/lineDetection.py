@@ -1,11 +1,11 @@
 import cv2 as cv
 import time
 import numpy as np
-from matplotlib import pyplot as plt
 import json
 import math
-import PID
+from autonomus_driving import PID
 import serial
+
 
 def load_config_data(filepath='autonomus_driving\settings.json'):
     with open(filepath, 'r') as f:
@@ -18,6 +18,8 @@ def load_config_data(filepath='autonomus_driving\settings.json'):
     global adaptiveSettings
     global horizontalLineThreshold
     global line_width
+    global ang_pid_values
+    global pos_pid_values
 
     lineReductions = configData['line_reductions']
     camIndex = configData['cam_index']
@@ -26,6 +28,8 @@ def load_config_data(filepath='autonomus_driving\settings.json'):
     adaptiveSettings = np.array(configData['adaptive_settings'])
     horizontalLineThreshold = configData["horizontal_line_threshold"]
     line_width = configData["line_width"]
+    ang_pid_values = np.array(configData["ang_pid_values"])
+    pos_pid_values = np.array(configData["pos_pid_values"])
 
 
 def load_cam_calib_data(filepath='camCalibrationData.json'):
@@ -61,9 +65,9 @@ def undistort_img(_img, _cameraMatrix, _dist):
 
 
 def load_files():
-    load_config_data()
-    load_cam_calib_data('calibration\camCalibrationData.json')
-    load_unwrap_data(r'autonomus_driving\unwrap_data.json')
+    load_config_data("settings.json")
+    load_cam_calib_data('camCalibrationData.json')
+    load_unwrap_data("unwrap_data.json")
 
 
 def get_frame(cap, img=None):
@@ -74,7 +78,7 @@ def get_frame(cap, img=None):
         return None
     if img is not None:
         if np.array_equal(_img, img):
-            return None
+            return None 
             print("Same frame")
     return _img
 
@@ -285,10 +289,11 @@ old_ang_error = 0
 old_pos_error = 0
 old_ang_error_rate = 0
 old_pos_error_rate = 0
+Vert_uncertanty = 0
 
 #PID
-pos_pid = PID.PID(0.1, 0.1, 0.1)
-ang_pid = PID.PID(0.1, 0.1, 0.1)
+pos_pid = PID.PID(pos_pid_values)
+ang_pid = PID.PID(ang_pid_values)
 
 #flags
 turnCentanty = 0
@@ -369,12 +374,14 @@ while cap.isOpened():
             ang_error, pos_error = process_errorLine(error_line)
             change_error_vars()
             
-
-        elif vert_lines.__len__() == 0:
-            ang_error = old_ang_error + old_ang_error_rate
-            pos_error = old_pos_error + old_pos_error_rate
+        
+        if vert_lines.__len__() == 0:
+            Vert_uncertanty =+ 1
+            ang_error = old_ang_error + old_ang_error_rate/Vert_uncertanty
+            pos_error = old_pos_error + old_pos_error_rate/Vert_uncertanty
             change_error_vars()
-
+        else:
+            Vert_uncertanty = 1
         if hori_lines.__len__() == 1:
             hori_lines = hori_lines[0]
             x1, y1, x2, y2, angle = hori_lines
@@ -414,9 +421,11 @@ while cap.isOpened():
     dt = time.time() - start
     ang_pos_correction = pos_pid.update(0, pos_error, 1)
     ang_correction = ang_pid.update(ang_pos_correction, ang_error, 1)
-    ser = serial.Serial('COM1', 115200)
+    print("" + str(ang_correction))
+    print("ang pos:" + str(ang_pos_correction))
+    """ser = serial.Serial('COM1', 115200)
     ser.write(str(ang_correction).encode())
-    ser.close()
+    ser.close()"""
 
     end = time.time()
     totalTime = end - start
