@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image, ImageTk
 import os
 
-settings_path = "settings.json"
+settings_path = "../settings.json"
 
 def image_resize(image, width = None, height = None, inter = cv.INTER_AREA):
     # initialize the dimensions of the image to be resized and
@@ -49,10 +49,13 @@ def load_unwrap_data(filepath='unwrap_data.json'):
     global unwrap_cent
     unwrap_cent = np.array(unwrapData['centers'])
 
-load_unwrap_data('unwrap_data.json')
+load_unwrap_data('../unwrap_data.json')
 # Create GUI
 root = tk.Tk()
 root.title("Settings Editor")
+ico = Image.open('config_icon.png')
+photo = ImageTk.PhotoImage(ico)
+root.wm_iconphoto(False, photo)
 root.geometry("800x600")
 
 r_presed = False
